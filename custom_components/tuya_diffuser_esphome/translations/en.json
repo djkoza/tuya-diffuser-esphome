@@ -1,0 +1,46 @@
+{
+  "title": "Tuya Diffuser ESPHome",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add diffuser",
+        "description": "Select an auto-detected ESPHome diffuser or continue with manual setup.",
+        "data": {
+          "candidate": "Detected diffuser"
+        }
+      },
+      "manual": {
+        "title": "Manual setup",
+        "description": "Map the source ESPHome entities for one diffuser.",
+        "data": {
+          "name": "Name",
+          "mist_mode_entity": "Mist mode entity",
+          "mist_strength_entity": "Mist strength entity",
+          "countdown_minutes_entity": "Countdown minutes entity",
+          "countdown_left_entity": "Countdown left entity"
+        }
+      }
+    },
+    "error": {
+      "duplicate_entities": "Each source entity must be different."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edit diffuser",
+        "description": "Update the linked ESPHome entities.",
+        "data": {
+          "name": "Name",
+          "mist_mode_entity": "Mist mode entity",
+          "mist_strength_entity": "Mist strength entity",
+          "countdown_minutes_entity": "Countdown minutes entity",
+          "countdown_left_entity": "Countdown left entity"
+        }
+      }
+    },
+    "error": {
+      "duplicate_entities": "Each source entity must be different."
+    }
+  }
+}

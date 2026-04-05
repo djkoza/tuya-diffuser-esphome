@@ -1,0 +1,8 @@
+humidifier:
+  - platform: tuya_diffuser_esphome
+    name: Livingroom Diffuser Mist
+    unique_id: livingroom_diffuser_mist_proxy
+    mist_mode_entity: select.livingroom_diffuser_livingroom_diffuser_mist_mode
+    mist_strength_entity: select.livingroom_diffuser_livingroom_diffuser_mist_strength
+    countdown_minutes_entity: number.livingroom_diffuser_livingroom_diffuser_countdown_minutes
+    countdown_left_entity: sensor.livingroom_diffuser_livingroom_diffuser_countdown_left

@@ -1,0 +1,11 @@
+{
+  "domain": "tuya_diffuser_esphome",
+  "name": "Tuya Diffuser ESPHome",
+  "documentation": "https://github.com/djkoza/tuya-diffuser-esphome",
+  "issue_tracker": "https://github.com/djkoza/tuya-diffuser-esphome/issues",
+  "version": "0.1.0",
+  "codeowners": ["@djkoza"],
+  "config_flow": true,
+  "requirements": [],
+  "iot_class": "local_push"
+}

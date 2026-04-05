@@ -1,0 +1,35 @@
+set_mist_strength:
+  name: Set Mist Strength
+  description: Set the diffuser mist strength.
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain: humidifier
+          integration: tuya_diffuser_esphome
+    strength:
+      required: true
+      selector:
+        select:
+          options:
+            - low
+            - high
+
+set_countdown_minutes:
+  name: Set Countdown Minutes
+  description: Set the diffuser countdown timer in minutes.
+  fields:
+    entity_id:
+      required: true
+      selector:
+        entity:
+          domain: humidifier
+          integration: tuya_diffuser_esphome
+    minutes:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 360
+          step: 1

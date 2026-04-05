@@ -1,0 +1,46 @@
+{
+  "title": "Tuya Diffuser ESPHome",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Dodaj dyfuzor",
+        "description": "Wybierz automatycznie wykryty dyfuzor ESPHome albo przejdź do konfiguracji ręcznej.",
+        "data": {
+          "candidate": "Wykryty dyfuzor"
+        }
+      },
+      "manual": {
+        "title": "Konfiguracja ręczna",
+        "description": "Powiąż encje źródłowe ESPHome dla jednego dyfuzora.",
+        "data": {
+          "name": "Nazwa",
+          "mist_mode_entity": "Encja trybu mgiełki",
+          "mist_strength_entity": "Encja mocy mgiełki",
+          "countdown_minutes_entity": "Encja minutnika",
+          "countdown_left_entity": "Encja pozostałego czasu"
+        }
+      }
+    },
+    "error": {
+      "duplicate_entities": "Każda encja źródłowa musi być inna."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edytuj dyfuzor",
+        "description": "Zaktualizuj powiązane encje ESPHome.",
+        "data": {
+          "name": "Nazwa",
+          "mist_mode_entity": "Encja trybu mgiełki",
+          "mist_strength_entity": "Encja mocy mgiełki",
+          "countdown_minutes_entity": "Encja minutnika",
+          "countdown_left_entity": "Encja pozostałego czasu"
+        }
+      }
+    },
+    "error": {
+      "duplicate_entities": "Każda encja źródłowa musi być inna."
+    }
+  }
+}

@@ -3,7 +3,7 @@
   "name": "Tuya Diffuser ESPHome",
   "documentation": "https://github.com/djkoza/tuya-diffuser-esphome",
   "issue_tracker": "https://github.com/djkoza/tuya-diffuser-esphome/issues",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "codeowners": ["@djkoza"],
   "config_flow": true,
   "requirements": [],

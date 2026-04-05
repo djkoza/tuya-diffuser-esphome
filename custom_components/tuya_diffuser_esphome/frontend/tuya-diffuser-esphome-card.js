@@ -79,10 +79,11 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
     const countdownLeftValue = countdownLeftState
       ? Number.parseInt(countdownLeftState.state, 10)
       : 0;
+    const showCountdownControls = currentModeState === "Countdown";
     const showCountdownLeft =
+      showCountdownControls &&
       !!countdownLeftEntity &&
-      Number.isFinite(countdownLeftValue) &&
-      (countdownLeftValue > 0 || currentModeState === "Countdown");
+      Number.isFinite(countdownLeftValue);
 
     this.shadowRoot.innerHTML = `
       ${this._styles()}
@@ -99,7 +100,7 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
         <div class="control-grid">
           ${mistModeEntity ? '<div id="mist-mode-tile"></div>' : ""}
           ${mistStrengthEntity ? '<div id="mist-strength-tile"></div>' : ""}
-          ${countdownMinutesEntity ? '<div id="countdown-minutes-tile"></div>' : ""}
+          ${showCountdownControls && countdownMinutesEntity ? '<div id="countdown-minutes-tile"></div>' : ""}
           ${showCountdownLeft ? '<div id="countdown-left-tile"></div>' : ""}
         </div>
       </div>
@@ -141,7 +142,7 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
       );
     }
 
-    if (countdownMinutesEntity) {
+    if (showCountdownControls && countdownMinutesEntity) {
       await this._mountTileCard(
         "countdown-minutes-tile",
         this._countdownMinutesTileConfig(countdownMinutesEntity),

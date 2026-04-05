@@ -10,6 +10,13 @@ const STRENGTH_LABELS = {
   high: "Wyższa",
 };
 
+const TIMER_PRESETS = [60, 120, 240];
+const LIGHT_PRESETS = [
+  { value: 64, label: "25%" },
+  { value: 153, label: "60%" },
+  { value: 255, label: "100%" },
+];
+
 class TuyaDiffuserEsphomeCard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -39,7 +46,7 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 6;
+    return 5;
   }
 
   async _call(action, promiseFactory) {
@@ -70,104 +77,130 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
     const attrs = stateObj.attributes ?? {};
     const title = this._config.title || attrs.friendly_name || "Dyfuzor";
     const isOn = stateObj.state !== "off";
-    const mode = isOn ? (attrs.mode || "continuous") : "off";
+    const mode = isOn ? attrs.mode || "continuous" : "off";
     const strength = attrs.mist_strength || "low";
     const countdownMinutes = Number(attrs.countdown_minutes ?? 120);
     const countdownLeft = Number(attrs.countdown_left ?? 0);
-    const countdownProgress = countdownMinutes > 0
-      ? Math.max(0, Math.min(100, Math.round((countdownLeft / countdownMinutes) * 100)))
-      : 0;
+    const countdownProgress =
+      mode === "countdown" && countdownMinutes > 0
+        ? Math.max(
+            0,
+            Math.min(100, Math.round((countdownLeft / countdownMinutes) * 100))
+          )
+        : 0;
 
-    const lightEntityId =
-      this._config.light_entity ||
-      attrs.light_entity ||
-      null;
+    const lightEntityId = this._config.light_entity || attrs.light_entity || null;
     const lightState = lightEntityId ? this._hass?.states?.[lightEntityId] : null;
 
     this.shadowRoot.innerHTML = `
       ${this._styles()}
       <ha-card>
         <div class="card ${this._busyAction ? "busy" : ""}">
-          <div class="hero">
-            <div class="hero-copy">
+          <div class="header">
+            <div class="title-block">
               <div class="eyebrow">Local-only control</div>
-              <div class="title">${title}</div>
-              <div class="subtitle">
-                ${this._heroSubtitle(mode, strength, countdownLeft)}
+              <div class="title-row">
+                <div class="title">${title}</div>
+                <span class="status-dot ${isOn ? "is-on" : "is-off"}"></span>
               </div>
+              <div class="subtitle">${this._heroSubtitle(
+                mode,
+                strength,
+                countdownLeft
+              )}</div>
             </div>
-            <button class="power ${isOn ? "on" : "off"}" data-power-toggle>
-              <span class="power-dot"></span>
+            <button class="system-button primary" data-power-toggle>
               ${isOn ? "Wyłącz" : "Włącz"}
             </button>
           </div>
 
-          <div class="stats">
-            <div class="stat">
-              <div class="stat-label">Tryb</div>
-              <div class="stat-value">${MODE_LABELS[mode] || "Off"}</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">Moc</div>
-              <div class="stat-value">${STRENGTH_LABELS[strength] || "Niższa"}</div>
-            </div>
-            <div class="stat">
-              <div class="stat-label">Timer</div>
-              <div class="stat-value">${countdownMinutes} min</div>
-            </div>
+          <div class="summary">
+            ${this._summaryChip("Tryb", MODE_LABELS[mode] || "Off")}
+            ${this._summaryChip("Moc", STRENGTH_LABELS[strength] || "Niższa")}
+            ${this._summaryChip("Timer", `${countdownMinutes} min`)}
+            ${mode === "countdown"
+              ? this._summaryChip("Pozostało", `${countdownLeft} min`)
+              : ""}
           </div>
 
           <div class="section">
             <div class="section-head">
-              <div class="label">Tryb pracy</div>
-              <div class="meta">${isOn ? "Aktywny" : "Wyłączony"}</div>
+              <div>
+                <div class="section-label">Tryb pracy</div>
+                <div class="section-meta">${isOn ? "Aktywny" : "Wyłączony"}</div>
+              </div>
+              <button class="system-button compact" data-more-info data-entity="${
+                this._config.entity
+              }">
+                Szczegóły
+              </button>
             </div>
-            <div class="mode-grid">
-              ${this._modeButton("off", mode)}
-              ${this._modeButton("continuous", mode)}
-              ${this._modeButton("interval", mode)}
-              ${this._modeButton("countdown", mode)}
-            </div>
+            ${this._renderModeControl(mode)}
           </div>
 
           <div class="section">
             <div class="section-head">
-              <div class="label">Moc mgiełki</div>
-              <div class="meta">${STRENGTH_LABELS[strength] || "Niższa"}</div>
-            </div>
-            <div class="strength-row">
-              ${this._strengthButton("low", strength)}
-              ${this._strengthButton("high", strength)}
-            </div>
-          </div>
-
-          <div class="section">
-            <div class="section-head">
-              <div class="label">Minutnik</div>
-              <div class="meta">
-                ${mode === "countdown" ? `Pozostało ${countdownLeft} min` : `Ustawione ${countdownMinutes} min`}
+              <div>
+                <div class="section-label">Moc mgiełki</div>
+                <div class="section-meta">${STRENGTH_LABELS[strength] || "Niższa"}</div>
               </div>
             </div>
-            <div class="progress-shell ${mode === "countdown" ? "visible" : ""}">
-              <div class="progress-bar" style="width:${countdownProgress}%"></div>
-            </div>
-            <div class="stepper">
-              <button class="ghost" data-minutes="${Math.max(0, countdownMinutes - 5)}">-5</button>
-              <div class="value">${countdownMinutes}<span>min</span></div>
-              <button class="ghost" data-minutes="${Math.min(360, countdownMinutes + 5)}">+5</button>
-            </div>
-            <div class="presets">
-              ${this._presetButton(60, countdownMinutes)}
-              ${this._presetButton(120, countdownMinutes)}
-              ${this._presetButton(240, countdownMinutes)}
-            </div>
+            ${this._renderStrengthControl(strength)}
           </div>
 
-          ${this._config.show_light && lightState ? this._renderLightSection(lightEntityId, lightState) : ""}
+          <div class="section">
+            <div class="section-head">
+              <div>
+                <div class="section-label">Minutnik</div>
+                <div class="section-meta">
+                  ${
+                    mode === "countdown"
+                      ? `Pozostało ${countdownLeft} min`
+                      : `Ustawione ${countdownMinutes} min`
+                  }
+                </div>
+              </div>
+            </div>
+            <div class="timer-shell">
+              <div class="timer-stepper">
+                <button
+                  class="system-button stepper-button"
+                  data-minutes="${Math.max(0, countdownMinutes - 5)}"
+                >
+                  -5
+                </button>
+                <div class="timer-value">
+                  <span class="timer-number">${countdownMinutes}</span>
+                  <span class="timer-unit">min</span>
+                </div>
+                <button
+                  class="system-button stepper-button"
+                  data-minutes="${Math.min(360, countdownMinutes + 5)}"
+                >
+                  +5
+                </button>
+              </div>
+              <div class="progress-track ${mode === "countdown" ? "visible" : ""}">
+                <div class="progress-bar" style="width:${countdownProgress}%"></div>
+              </div>
+            </div>
+            ${this._renderTimerPresetControl(countdownMinutes)}
+          </div>
+
+          ${
+            this._config.show_light && lightState
+              ? this._renderLightSection(lightEntityId, lightState)
+              : ""
+          }
         </div>
       </ha-card>
     `;
 
+    this._setupButtons(isOn, lightEntityId, lightState);
+    this._setupControlSelects(mode, strength, countdownMinutes, lightEntityId, lightState);
+  }
+
+  _setupButtons(isOn, lightEntityId, lightState) {
     this.shadowRoot.querySelectorAll("[data-power-toggle]").forEach((button) => {
       button.disabled = !!this._busyAction;
       button.addEventListener("click", () => this._togglePower(isOn));
@@ -185,20 +218,216 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
 
     this.shadowRoot.querySelectorAll("[data-minutes]").forEach((button) => {
       button.disabled = !!this._busyAction;
-      button.addEventListener("click", () => this._setMinutes(Number(button.dataset.minutes)));
+      button.addEventListener("click", () =>
+        this._setMinutes(Number(button.dataset.minutes))
+      );
     });
 
     this.shadowRoot.querySelectorAll("[data-light-toggle]").forEach((button) => {
-      button.addEventListener("click", () => this._toggleLight(lightEntityId, lightState));
+      button.disabled = !!this._busyAction;
+      button.addEventListener("click", () =>
+        this._toggleLight(lightEntityId, lightState)
+      );
     });
 
     this.shadowRoot.querySelectorAll("[data-light-brightness]").forEach((button) => {
-      button.addEventListener("click", () => this._setLightBrightness(lightEntityId, Number(button.dataset.lightBrightness)));
+      button.disabled = !!this._busyAction;
+      button.addEventListener("click", () =>
+        this._setLightBrightness(lightEntityId, Number(button.dataset.lightBrightness))
+      );
     });
 
-    this.shadowRoot.querySelectorAll("[data-light-more]").forEach((button) => {
-      button.addEventListener("click", () => this._showMoreInfo(lightEntityId));
+    this.shadowRoot.querySelectorAll("[data-more-info]").forEach((button) => {
+      button.addEventListener("click", () => this._showMoreInfo(button.dataset.entity));
     });
+  }
+
+  _setupControlSelects(mode, strength, countdownMinutes, lightEntityId, lightState) {
+    this._configureControlSelect(
+      "mode-control",
+      [
+        { value: "off", label: MODE_LABELS.off },
+        { value: "continuous", label: MODE_LABELS.continuous },
+        { value: "interval", label: MODE_LABELS.interval },
+        { value: "countdown", label: MODE_LABELS.countdown },
+      ],
+      mode,
+      (value) => this._setMode(value)
+    );
+
+    this._configureControlSelect(
+      "strength-control",
+      [
+        { value: "low", label: STRENGTH_LABELS.low },
+        { value: "high", label: STRENGTH_LABELS.high },
+      ],
+      strength,
+      (value) => this._setStrength(value)
+    );
+
+    this._configureControlSelect(
+      "timer-presets",
+      TIMER_PRESETS.map((preset) => ({
+        value: String(preset),
+        label: `${preset} min`,
+      })),
+      TIMER_PRESETS.includes(countdownMinutes) ? String(countdownMinutes) : undefined,
+      (value) => this._setMinutes(Number(value))
+    );
+
+    if (!lightEntityId || !lightState) {
+      return;
+    }
+
+    const brightness = lightState.attributes?.brightness;
+    const presetValue = LIGHT_PRESETS.find(
+      (preset) => preset.value === Number(brightness)
+    )?.value;
+
+    this._configureControlSelect(
+      "light-presets",
+      LIGHT_PRESETS.map((preset) => ({
+        value: String(preset.value),
+        label: preset.label,
+      })),
+      presetValue !== undefined ? String(presetValue) : undefined,
+      (value) => this._setLightBrightness(lightEntityId, Number(value))
+    );
+  }
+
+  _configureControlSelect(id, options, value, callback) {
+    const control = this.shadowRoot.getElementById(id);
+    if (!control) {
+      return;
+    }
+    control.options = options;
+    control.value = value;
+    control.disabled = !!this._busyAction;
+    control.addEventListener("value-changed", (ev) => {
+      const next = ev.detail?.value;
+      if (next !== undefined) {
+        callback(String(next));
+      }
+    });
+  }
+
+  _summaryChip(label, value) {
+    return `
+      <div class="summary-chip">
+        <span class="summary-chip-label">${label}</span>
+        <span class="summary-chip-value">${value}</span>
+      </div>
+    `;
+  }
+
+  _renderModeControl(activeMode) {
+    if (customElements.get("ha-control-select")) {
+      return `<ha-control-select id="mode-control" aria-label="Tryb pracy"></ha-control-select>`;
+    }
+    return `
+      <div class="fallback-grid">
+        ${this._fallbackButton("off", MODE_LABELS.off, "mode", activeMode)}
+        ${this._fallbackButton(
+          "continuous",
+          MODE_LABELS.continuous,
+          "mode",
+          activeMode
+        )}
+        ${this._fallbackButton("interval", MODE_LABELS.interval, "mode", activeMode)}
+        ${this._fallbackButton(
+          "countdown",
+          MODE_LABELS.countdown,
+          "mode",
+          activeMode
+        )}
+      </div>
+    `;
+  }
+
+  _renderStrengthControl(activeStrength) {
+    if (customElements.get("ha-control-select")) {
+      return `<ha-control-select id="strength-control" aria-label="Moc mgiełki"></ha-control-select>`;
+    }
+    return `
+      <div class="fallback-grid two-columns">
+        ${this._fallbackButton("low", STRENGTH_LABELS.low, "strength", activeStrength)}
+        ${this._fallbackButton("high", STRENGTH_LABELS.high, "strength", activeStrength)}
+      </div>
+    `;
+  }
+
+  _renderTimerPresetControl(activeMinutes) {
+    if (customElements.get("ha-control-select")) {
+      return `<ha-control-select id="timer-presets" aria-label="Presety minutnika"></ha-control-select>`;
+    }
+    return `
+      <div class="fallback-grid timer-presets">
+        ${TIMER_PRESETS.map((preset) =>
+          this._fallbackButton(String(preset), `${preset} min`, "minutes", String(activeMinutes))
+        ).join("")}
+      </div>
+    `;
+  }
+
+  _renderLightSection(entityId, stateObj) {
+    const isOn = stateObj.state === "on";
+    const brightness = stateObj.attributes?.brightness
+      ? Math.round((stateObj.attributes.brightness / 255) * 100)
+      : 100;
+    const lightLabel = isOn ? `${brightness}%` : "Wyłączone";
+    const preview = this._lightPreview(stateObj);
+
+    return `
+      <div class="section">
+        <div class="section-head">
+          <div>
+            <div class="section-label">Podświetlenie</div>
+            <div class="section-meta">${lightLabel}</div>
+          </div>
+          <button class="system-button compact" data-more-info data-entity="${entityId}">
+            Panel światła
+          </button>
+        </div>
+        <div class="light-row">
+          <div class="light-swatch">
+            <span class="light-dot" style="${preview}"></span>
+            <span class="light-state">${isOn ? "Włączone" : "Wyłączone"}</span>
+          </div>
+          <button class="system-button" data-light-toggle>
+            ${isOn ? "Wyłącz światło" : "Włącz światło"}
+          </button>
+        </div>
+        ${
+          customElements.get("ha-control-select")
+            ? `<ha-control-select id="light-presets" aria-label="Presety jasności światła"></ha-control-select>`
+            : `<div class="fallback-grid timer-presets">
+                ${LIGHT_PRESETS.map((preset) =>
+                  `<button class="fallback-button" data-light-brightness="${preset.value}">${preset.label}</button>`
+                ).join("")}
+              </div>`
+        }
+      </div>
+    `;
+  }
+
+  _fallbackButton(value, label, datasetKey, activeValue) {
+    const active = String(value) === String(activeValue);
+    return `
+      <button class="fallback-button ${active ? "active" : ""}" data-${datasetKey}="${value}">
+        ${label}
+      </button>
+    `;
+  }
+
+  _lightPreview(stateObj) {
+    const rgb = stateObj.attributes?.rgb_color;
+    if (Array.isArray(rgb) && rgb.length === 3) {
+      return `background: rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]});`;
+    }
+    if (stateObj.state === "on") {
+      return "background: var(--warning-color, #ffb74d);";
+    }
+    return "background: var(--disabled-text-color);";
   }
 
   _heroSubtitle(mode, strength, countdownLeft) {
@@ -212,74 +441,6 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
       return `Praca ciągła, moc ${STRENGTH_LABELS[strength] || "Niższa"}`;
     }
     return "Urządzenie gotowe do uruchomienia";
-  }
-
-  _modeButton(mode, activeMode) {
-    const active = mode === activeMode;
-    return `
-      <button class="seg ${active ? "active" : ""}" data-mode="${mode}">
-        <span>${MODE_LABELS[mode]}</span>
-      </button>
-    `;
-  }
-
-  _strengthButton(value, active) {
-    const label = STRENGTH_LABELS[value];
-    return `
-      <button class="seg ${value === active ? "active" : ""}" data-strength="${value}">
-        <span>${label}</span>
-      </button>
-    `;
-  }
-
-  _presetButton(value, active) {
-    return `
-      <button class="preset ${value === active ? "active" : ""}" data-minutes="${value}">
-        ${value} min
-      </button>
-    `;
-  }
-
-  _renderLightSection(entityId, stateObj) {
-    const isOn = stateObj.state === "on";
-    const brightness = stateObj.attributes?.brightness
-      ? Math.round((stateObj.attributes.brightness / 255) * 100)
-      : 100;
-    const effect = stateObj.attributes?.effect || "Manual";
-    const background = this._lightPreview(stateObj);
-
-    return `
-      <div class="section light">
-        <div class="section-head">
-          <div class="label">Podświetlenie</div>
-          <div class="meta">${isOn ? `${brightness}% · ${effect}` : "Wyłączone"}</div>
-        </div>
-        <div class="light-preview" style="${background}">
-          <div class="light-actions">
-            <button class="seg ${isOn ? "active" : ""}" data-light-toggle>
-              ${isOn ? "Wyłącz światło" : "Włącz światło"}
-            </button>
-            <button class="ghost" data-light-more>Panel światła</button>
-          </div>
-        </div>
-        <div class="presets light-presets">
-          <button class="preset" data-light-brightness="64">25%</button>
-          <button class="preset" data-light-brightness="153">60%</button>
-          <button class="preset" data-light-brightness="255">100%</button>
-        </div>
-      </div>
-    `;
-  }
-
-  _lightPreview(stateObj) {
-    const rgb = stateObj.attributes?.rgb_color;
-    if (Array.isArray(rgb) && rgb.length === 3) {
-      return `background: linear-gradient(135deg, rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.34), rgba(255,255,255,0.06));`;
-    }
-    if (stateObj.state === "on") {
-      return "background: linear-gradient(135deg, rgba(255,255,255,0.28), rgba(255,214,153,0.10));";
-    }
-    return "background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));";
   }
 
   async _setMode(mode) {
@@ -320,15 +481,19 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
   async _setMinutes(minutes) {
     if (!this._hass || this._busyAction) return;
     await this._call(`minutes:${minutes}`, async () => {
-      await this._hass.callService("tuya_diffuser_esphome", "set_countdown_minutes", {
-        entity_id: this._config.entity,
-        minutes,
-      });
+      await this._hass.callService(
+        "tuya_diffuser_esphome",
+        "set_countdown_minutes",
+        {
+          entity_id: this._config.entity,
+          minutes,
+        }
+      );
     });
   }
 
   async _toggleLight(entityId, lightState) {
-    if (!this._hass || !entityId) return;
+    if (!this._hass || !entityId || this._busyAction) return;
     const service = lightState?.state === "on" ? "turn_off" : "turn_on";
     await this._call(`light:${service}`, async () => {
       await this._hass.callService("light", service, {
@@ -338,7 +503,7 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
   }
 
   async _setLightBrightness(entityId, brightness) {
-    if (!this._hass || !entityId) return;
+    if (!this._hass || !entityId || this._busyAction) return;
     await this._call(`light:brightness:${brightness}`, async () => {
       await this._hass.callService("light", "turn_on", {
         entity_id: entityId,
@@ -361,253 +526,271 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
   _styles() {
     return `
       <style>
+        :host {
+          display: block;
+        }
+
         ha-card {
-          overflow: hidden;
-          border: none;
-          background:
-            radial-gradient(circle at 15% 12%, rgba(86, 163, 255, 0.24), transparent 32%),
-            radial-gradient(circle at 85% 12%, rgba(0, 208, 165, 0.16), transparent 28%),
-            linear-gradient(165deg, rgba(17, 27, 44, 0.98), rgba(8, 14, 24, 1));
-          color: #f2f7ff;
-          box-shadow: 0 22px 48px rgba(5, 10, 20, 0.28);
+          color: var(--primary-text-color);
+          background: var(--ha-card-background, var(--card-background-color));
         }
 
         .card {
-          padding: 18px;
           display: grid;
-          gap: 14px;
+          gap: 16px;
+          padding: 16px;
         }
 
         .card.busy {
-          opacity: 0.9;
+          opacity: 0.72;
+          pointer-events: none;
         }
 
-        .hero {
+        .header {
           display: flex;
           justify-content: space-between;
-          gap: 16px;
+          gap: 12px;
           align-items: flex-start;
         }
 
-        .hero-copy {
+        .title-block {
+          min-width: 0;
+          display: grid;
+          gap: 6px;
+        }
+
+        .eyebrow,
+        .section-label,
+        .summary-chip-label,
+        .timer-unit {
+          color: var(--secondary-text-color);
+          font-size: 12px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .title-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
           min-width: 0;
         }
 
-        .eyebrow {
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: 0.14em;
-          color: rgba(210, 223, 255, 0.62);
-          margin-bottom: 8px;
-        }
-
         .title {
-          font-size: 25px;
-          line-height: 1.05;
-          font-weight: 800;
-          margin-bottom: 8px;
+          font-size: 1.25rem;
+          font-weight: 600;
+          line-height: 1.2;
         }
 
-        .subtitle {
-          font-size: 13px;
-          color: rgba(224, 235, 255, 0.74);
-          line-height: 1.45;
+        .subtitle,
+        .section-meta {
+          color: var(--secondary-text-color);
+          font-size: 0.95rem;
+          line-height: 1.4;
         }
 
-        .power {
-          border: 0;
-          cursor: pointer;
-          border-radius: 999px;
-          padding: 10px 14px;
-          font: inherit;
-          font-weight: 700;
-          color: #eef5ff;
+        .status-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          flex: 0 0 auto;
+          background: var(--disabled-color);
+        }
+
+        .status-dot.is-on {
+          background: var(--success-color, #43a047);
+        }
+
+        .summary {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .summary-chip {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          background: rgba(255, 255, 255, 0.08);
-          min-width: 102px;
-          justify-content: center;
+          padding: 8px 10px;
+          border-radius: 999px;
+          border: 1px solid var(--divider-color);
+          background: var(
+            --ha-color-fill-neutral-quiet-resting,
+            var(--secondary-background-color)
+          );
         }
 
-        .power.on {
-          background: linear-gradient(180deg, rgba(0, 198, 153, 0.9), rgba(0, 149, 115, 0.94));
-        }
-
-        .power.off {
-          background: linear-gradient(180deg, rgba(91, 176, 255, 0.92), rgba(33, 119, 255, 0.92));
-        }
-
-        .power-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: currentColor;
-          opacity: 0.9;
-        }
-
-        .stats {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 10px;
-        }
-
-        .stat,
-        .section {
-          border-radius: 16px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(14px);
-        }
-
-        .stat {
-          padding: 12px 14px;
-        }
-
-        .stat-label,
-        .label {
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          color: rgba(210, 223, 255, 0.58);
-        }
-
-        .stat-value {
-          margin-top: 6px;
-          font-size: 18px;
-          font-weight: 700;
-          color: #f7fbff;
+        .summary-chip-value {
+          font-weight: 600;
         }
 
         .section {
-          padding: 14px;
           display: grid;
           gap: 12px;
+          padding-top: 16px;
+          border-top: 1px solid var(--divider-color);
         }
 
         .section-head {
           display: flex;
-          align-items: baseline;
+          align-items: flex-start;
           justify-content: space-between;
           gap: 12px;
         }
 
-        .meta {
-          font-size: 12px;
-          color: rgba(210, 223, 255, 0.72);
+        .system-button,
+        .fallback-button {
+          appearance: none;
+          border: 1px solid var(--divider-color);
+          border-radius: var(--ha-card-border-radius, 12px);
+          background: var(
+            --ha-color-fill-neutral-quiet-resting,
+            var(--secondary-background-color)
+          );
+          color: var(--primary-text-color);
+          font: inherit;
+          cursor: pointer;
+          min-height: 42px;
+          padding: 0 14px;
+          transition: background-color 120ms ease, border-color 120ms ease,
+            color 120ms ease, opacity 120ms ease;
         }
 
-        .mode-grid,
-        .strength-row,
-        .presets {
+        .system-button:hover,
+        .fallback-button:hover {
+          background: var(
+            --ha-color-fill-neutral-quiet-hover,
+            var(--secondary-background-color)
+          );
+        }
+
+        .system-button.primary {
+          background: var(--primary-color);
+          border-color: var(--primary-color);
+          color: var(--text-primary-color, #fff);
+          font-weight: 600;
+        }
+
+        .system-button.compact {
+          min-height: 36px;
+          padding: 0 12px;
+        }
+
+        .fallback-button.active {
+          border-color: var(--primary-color);
+          box-shadow: inset 0 0 0 1px var(--primary-color);
+          color: var(--primary-color);
+        }
+
+        .fallback-grid {
           display: grid;
           gap: 8px;
-        }
-
-        .mode-grid {
           grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
-        .strength-row {
+        .fallback-grid.two-columns {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
-        .presets {
+        .timer-presets {
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
-        .seg,
-        .preset,
-        .ghost {
-          appearance: none;
-          border: 0;
-          border-radius: 12px;
-          padding: 12px 10px;
-          min-height: 46px;
-          font: inherit;
-          cursor: pointer;
-          color: #f1f7ff;
-          background: rgba(255, 255, 255, 0.08);
-          transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+        .timer-shell {
+          display: grid;
+          gap: 10px;
         }
 
-        .seg:hover,
-        .preset:hover,
-        .ghost:hover,
-        .power:hover {
-          transform: translateY(-1px);
+        .timer-stepper {
+          display: grid;
+          gap: 10px;
+          grid-template-columns: 72px minmax(0, 1fr) 72px;
+          align-items: center;
         }
 
-        .seg.active,
-        .preset.active {
-          background: linear-gradient(180deg, rgba(95, 178, 255, 0.94), rgba(37, 117, 255, 0.94));
-          box-shadow: 0 12px 28px rgba(33, 119, 255, 0.24);
+        .stepper-button {
+          padding: 0;
         }
 
-        button:disabled {
-          opacity: 0.6;
-          cursor: default;
-          transform: none;
+        .timer-value {
+          display: flex;
+          align-items: baseline;
+          justify-content: center;
+          gap: 8px;
+          min-height: 48px;
+          border-radius: var(--ha-card-border-radius, 12px);
+          background: var(
+            --ha-color-fill-neutral-quiet-resting,
+            var(--secondary-background-color)
+          );
         }
 
-        .progress-shell {
+        .timer-number {
+          font-size: 1.75rem;
+          font-weight: 600;
+          line-height: 1;
+        }
+
+        .progress-track {
           height: 8px;
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.08);
           overflow: hidden;
+          border-radius: 999px;
+          background: var(
+            --ha-color-fill-neutral-normal-resting,
+            rgba(127, 127, 127, 0.18)
+          );
           opacity: 0.45;
         }
 
-        .progress-shell.visible {
+        .progress-track.visible {
           opacity: 1;
         }
 
         .progress-bar {
           height: 100%;
           border-radius: inherit;
-          background: linear-gradient(90deg, rgba(0, 205, 163, 0.95), rgba(87, 160, 255, 0.95));
+          background: var(--primary-color);
         }
 
-        .stepper {
-          display: grid;
-          grid-template-columns: 72px 1fr 72px;
-          gap: 10px;
-          align-items: center;
+        ha-control-select {
+          --control-select-color: var(--primary-color);
+          --control-select-background: var(--disabled-color);
+          --control-select-background-opacity: 0.14;
+          --control-select-thickness: 44px;
+          --control-select-border-radius: var(--ha-card-border-radius, 12px);
         }
 
-        .value {
-          min-height: 50px;
-          border-radius: 14px;
-          background: rgba(255, 255, 255, 0.08);
+        .light-row {
           display: flex;
-          align-items: baseline;
-          justify-content: center;
-          gap: 6px;
-          font-size: 28px;
-          font-weight: 800;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px;
+          border: 1px solid var(--divider-color);
+          border-radius: var(--ha-card-border-radius, 12px);
+          background: var(
+            --ha-color-fill-neutral-quiet-resting,
+            var(--secondary-background-color)
+          );
         }
 
-        .value span {
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-          color: rgba(210, 223, 255, 0.58);
+        .light-swatch {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
         }
 
-        .light-preview {
-          border-radius: 14px;
-          padding: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
+        .light-dot {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          flex: 0 0 auto;
+          box-shadow: 0 0 0 2px var(--card-background-color);
         }
 
-        .light-actions {
-          display: grid;
-          grid-template-columns: 1.2fr 1fr;
-          gap: 8px;
-        }
-
-        .light-presets {
-          margin-top: -2px;
+        .light-state {
+          color: var(--secondary-text-color);
         }
 
         .missing {
@@ -615,19 +798,18 @@ class TuyaDiffuserEsphomeCard extends HTMLElement {
         }
 
         @media (max-width: 700px) {
-          .stats,
-          .mode-grid,
-          .presets,
-          .light-actions {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          .hero {
+          .header,
+          .light-row,
+          .section-head {
             display: grid;
           }
 
-          .stepper {
-            grid-template-columns: 60px 1fr 60px;
+          .fallback-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .timer-stepper {
+            grid-template-columns: 60px minmax(0, 1fr) 60px;
           }
         }
       </style>

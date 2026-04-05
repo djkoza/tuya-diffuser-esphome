@@ -26,6 +26,7 @@ from .const import (
     ATTR_COUNTDOWN_LEFT,
     ATTR_COUNTDOWN_MINUTES,
     ATTR_DEVICE_ID,
+    ATTR_LIGHT_ENTITY,
     ATTR_MIST_STRENGTH,
     ATTR_SOURCE_ENTITIES,
     CARD_RESOURCE_URL,
@@ -33,6 +34,7 @@ from .const import (
     CONF_COUNTDOWN_LEFT_ENTITY,
     CONF_COUNTDOWN_MINUTES_ENTITY,
     CONF_DEVICE_ID,
+    CONF_LIGHT_ENTITY,
     CONF_MIST_MODE_ENTITY,
     CONF_MIST_STRENGTH_ENTITY,
     DATA_ENTITIES,
@@ -61,6 +63,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Required(CONF_MIST_STRENGTH_ENTITY): cv.entity_id,
         vol.Required(CONF_COUNTDOWN_MINUTES_ENTITY): cv.entity_id,
         vol.Required(CONF_COUNTDOWN_LEFT_ENTITY): cv.entity_id,
+        vol.Optional(CONF_LIGHT_ENTITY): cv.entity_id,
     }
 )
 
@@ -110,6 +113,7 @@ class TuyaDiffuserHumidifier(HumidifierEntity):
         self._mist_strength_entity = config[CONF_MIST_STRENGTH_ENTITY]
         self._countdown_minutes_entity = config[CONF_COUNTDOWN_MINUTES_ENTITY]
         self._countdown_left_entity = config[CONF_COUNTDOWN_LEFT_ENTITY]
+        self._light_entity = config.get(CONF_LIGHT_ENTITY)
         self._device_id = config.get(CONF_DEVICE_ID)
 
         self._is_on = False
@@ -204,6 +208,7 @@ class TuyaDiffuserHumidifier(HumidifierEntity):
             ATTR_DEVICE_ID: self._device_id,
             ATTR_CARD_TYPE: CARD_TYPE,
             ATTR_CARD_RESOURCE_URL: CARD_RESOURCE_URL,
+            ATTR_LIGHT_ENTITY: self._light_entity,
             ATTR_SOURCE_ENTITIES: {
                 key: getattr(self, f"_{key}")
                 for key in REQUIRED_ENTITY_KEYS

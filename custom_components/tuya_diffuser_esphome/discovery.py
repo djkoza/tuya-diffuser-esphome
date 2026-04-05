@@ -10,6 +10,7 @@ from .const import (
     CONF_COUNTDOWN_LEFT_ENTITY,
     CONF_COUNTDOWN_MINUTES_ENTITY,
     CONF_DEVICE_ID,
+    CONF_LIGHT_ENTITY,
     CONF_MIST_MODE_ENTITY,
     CONF_MIST_STRENGTH_ENTITY,
     CONF_SOURCE_TYPE,
@@ -59,6 +60,7 @@ def discover_candidates(hass) -> dict[str, DiffuserCandidate]:
                 CONF_DEVICE_ID: device_id,
                 CONF_TITLE: title,
                 **mapping,
+                **_discover_optional_entities(entity_registry, device_id),
             },
         )
 
@@ -99,6 +101,22 @@ def _match_role(entry: er.RegistryEntry) -> str | None:
     if _matches(entry, "sensor", "_countdown_left", "countdown left"):
         return CONF_COUNTDOWN_LEFT_ENTITY
     return None
+
+
+def _discover_optional_entities(entity_registry: er.EntityRegistry, device_id: str) -> dict[str, str]:
+    """Discover optional entities on the same device."""
+    light_entity = None
+    for entry in entity_registry.entities.values():
+        if entry.disabled_by is not None or entry.device_id != device_id:
+            continue
+        if entry.entity_id.startswith("light."):
+            light_entity = entry.entity_id
+            break
+
+    result: dict[str, str] = {}
+    if light_entity:
+        result[CONF_LIGHT_ENTITY] = light_entity
+    return result
 
 
 def _matches(entry: er.RegistryEntry, domain: str, entity_suffix: str, name_suffix: str) -> bool:

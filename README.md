@@ -21,6 +21,7 @@ The integration creates one aggregated `humidifier` entity per diffuser and adds
   - `tuya_diffuser_esphome.set_mist_strength`
   - `tuya_diffuser_esphome.set_countdown_minutes`
 - optionally ships a custom Lovelace card for a single compact control panel
+- can also surface the matching ESPHome `light` entity inside the same card
 
 ## Installation
 
@@ -52,6 +53,16 @@ entity: humidifier.livingroom_diffuser_mist
 title: Dyfuzor
 ```
 
+If the integration auto-detected a matching `light` entity on the same ESPHome device, the card will render a secondary light section automatically.
+You can also wire it manually:
+
+```yaml
+type: custom:tuya-diffuser-esphome-card
+entity: humidifier.livingroom_diffuser_mist
+title: Dyfuzor
+light_entity: light.livingroom_diffuser_livingroom_diffuser_light
+```
+
 ## Expected source entities
 
 The default autodiscovery looks for these ESPHome helpers on the same device:
@@ -60,6 +71,10 @@ The default autodiscovery looks for these ESPHome helpers on the same device:
 - `select.*_mist_strength`
 - `number.*_countdown_minutes`
 - `sensor.*_countdown_left`
+
+Optional:
+
+- `light.*`
 
 ## Repository layout
 

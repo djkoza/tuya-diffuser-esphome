@@ -17,7 +17,8 @@
           "mist_mode_entity": "Encja trybu mgiełki",
           "mist_strength_entity": "Encja mocy mgiełki",
           "countdown_minutes_entity": "Encja minutnika",
-          "countdown_left_entity": "Encja pozostałego czasu"
+          "countdown_left_entity": "Encja pozostałego czasu",
+          "light_entity": "Encja światła"
         }
       }
     },
@@ -35,7 +36,8 @@
           "mist_mode_entity": "Encja trybu mgiełki",
           "mist_strength_entity": "Encja mocy mgiełki",
           "countdown_minutes_entity": "Encja minutnika",
-          "countdown_left_entity": "Encja pozostałego czasu"
+          "countdown_left_entity": "Encja pozostałego czasu",
+          "light_entity": "Encja światła"
         }
       }
     },

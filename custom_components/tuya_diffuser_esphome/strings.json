@@ -17,7 +17,8 @@
           "mist_mode_entity": "Mist mode entity",
           "mist_strength_entity": "Mist strength entity",
           "countdown_minutes_entity": "Countdown minutes entity",
-          "countdown_left_entity": "Countdown left entity"
+          "countdown_left_entity": "Countdown left entity",
+          "light_entity": "Light entity"
         }
       }
     },
@@ -35,7 +36,8 @@
           "mist_mode_entity": "Mist mode entity",
           "mist_strength_entity": "Mist strength entity",
           "countdown_minutes_entity": "Countdown minutes entity",
-          "countdown_left_entity": "Countdown left entity"
+          "countdown_left_entity": "Countdown left entity",
+          "light_entity": "Light entity"
         }
       }
     },

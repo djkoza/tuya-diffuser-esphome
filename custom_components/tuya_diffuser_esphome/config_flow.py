@@ -16,6 +16,7 @@ from .const import (
     CONF_COUNTDOWN_LEFT_ENTITY,
     CONF_COUNTDOWN_MINUTES_ENTITY,
     CONF_DEVICE_ID,
+    CONF_LIGHT_ENTITY,
     CONF_MIST_MODE_ENTITY,
     CONF_MIST_STRENGTH_ENTITY,
     CONF_SOURCE_TYPE,
@@ -55,6 +56,8 @@ class TuyaDiffuserEspHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 key: candidate.data[key]
                 for key in (CONF_DEVICE_ID, CONF_SOURCE_TYPE, *REQUIRED_ENTITY_KEYS)
             }
+            if CONF_LIGHT_ENTITY in candidate.data:
+                data[CONF_LIGHT_ENTITY] = candidate.data[CONF_LIGHT_ENTITY]
             return self.async_create_entry(title=candidate.title, data=data)
 
         if not self._candidates:
@@ -99,6 +102,8 @@ class TuyaDiffuserEspHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_SOURCE_TYPE: SOURCE_MANUAL,
                     **{key: user_input[key] for key in REQUIRED_ENTITY_KEYS},
                 }
+                if user_input.get(CONF_LIGHT_ENTITY):
+                    data[CONF_LIGHT_ENTITY] = user_input[CONF_LIGHT_ENTITY]
                 if device_id:
                     data[CONF_DEVICE_ID] = device_id
                 return self.async_create_entry(title=title, data=data)
@@ -119,6 +124,9 @@ class TuyaDiffuserEspHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ),
                     vol.Required(CONF_COUNTDOWN_LEFT_ENTITY): selector.EntitySelector(
                         selector.EntitySelectorConfig(domain="sensor")
+                    ),
+                    vol.Optional(CONF_LIGHT_ENTITY): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="light")
                     ),
                 }
             ),
@@ -155,6 +163,8 @@ class TuyaDiffuserEspHomeOptionsFlow(config_entries.OptionsFlow):
                     key: user_input[key]
                     for key in REQUIRED_ENTITY_KEYS
                 }
+                if user_input.get(CONF_LIGHT_ENTITY):
+                    new_data[CONF_LIGHT_ENTITY] = user_input[CONF_LIGHT_ENTITY]
                 new_data[CONF_SOURCE_TYPE] = self.config_entry.data.get(CONF_SOURCE_TYPE, SOURCE_MANUAL)
                 if device_id := resolve_device_id_for_entities(
                     self.hass, [new_data[key] for key in REQUIRED_ENTITY_KEYS]
@@ -169,28 +179,36 @@ class TuyaDiffuserEspHomeOptionsFlow(config_entries.OptionsFlow):
                 return self.async_create_entry(title="", data={})
 
         defaults = self._defaults()
+        schema: dict[vol.Marker, object] = {
+            vol.Required(CONF_NAME, default=self.config_entry.title): str,
+            vol.Required(CONF_MIST_MODE_ENTITY, default=defaults[CONF_MIST_MODE_ENTITY]): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="select")
+            ),
+            vol.Required(
+                CONF_MIST_STRENGTH_ENTITY,
+                default=defaults[CONF_MIST_STRENGTH_ENTITY],
+            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="select")),
+            vol.Required(
+                CONF_COUNTDOWN_MINUTES_ENTITY,
+                default=defaults[CONF_COUNTDOWN_MINUTES_ENTITY],
+            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="number")),
+            vol.Required(
+                CONF_COUNTDOWN_LEFT_ENTITY,
+                default=defaults[CONF_COUNTDOWN_LEFT_ENTITY],
+            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
+        }
+        if CONF_LIGHT_ENTITY in defaults:
+            schema[vol.Optional(CONF_LIGHT_ENTITY, default=defaults[CONF_LIGHT_ENTITY])] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="light")
+            )
+        else:
+            schema[vol.Optional(CONF_LIGHT_ENTITY)] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="light")
+            )
+
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_NAME, default=self.config_entry.title): str,
-                    vol.Required(CONF_MIST_MODE_ENTITY, default=defaults[CONF_MIST_MODE_ENTITY]): selector.EntitySelector(
-                        selector.EntitySelectorConfig(domain="select")
-                    ),
-                    vol.Required(
-                        CONF_MIST_STRENGTH_ENTITY,
-                        default=defaults[CONF_MIST_STRENGTH_ENTITY],
-                    ): selector.EntitySelector(selector.EntitySelectorConfig(domain="select")),
-                    vol.Required(
-                        CONF_COUNTDOWN_MINUTES_ENTITY,
-                        default=defaults[CONF_COUNTDOWN_MINUTES_ENTITY],
-                    ): selector.EntitySelector(selector.EntitySelectorConfig(domain="number")),
-                    vol.Required(
-                        CONF_COUNTDOWN_LEFT_ENTITY,
-                        default=defaults[CONF_COUNTDOWN_LEFT_ENTITY],
-                    ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-                }
-            ),
+            data_schema=vol.Schema(schema),
             errors=errors,
         )
 
@@ -199,4 +217,8 @@ class TuyaDiffuserEspHomeOptionsFlow(config_entries.OptionsFlow):
         return {
             key: self.config_entry.data[key]
             for key in REQUIRED_ENTITY_KEYS
-        }
+        } | (
+            {CONF_LIGHT_ENTITY: self.config_entry.data[CONF_LIGHT_ENTITY]}
+            if CONF_LIGHT_ENTITY in self.config_entry.data
+            else {}
+        )

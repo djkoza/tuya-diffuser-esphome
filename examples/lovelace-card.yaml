@@ -1,3 +1,4 @@
 type: custom:tuya-diffuser-esphome-card
 entity: humidifier.livingroom_diffuser_mist
 title: Dyfuzor
+light_entity: light.livingroom_diffuser_livingroom_diffuser_light

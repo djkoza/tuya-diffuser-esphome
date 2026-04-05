@@ -80,6 +80,21 @@ def resolve_device_id_for_entities(hass, entity_ids: list[str]) -> str | None:
     return None
 
 
+def discover_light_entity(hass, device_id: str | None) -> str | None:
+    """Discover the main light entity for a device."""
+    if not device_id:
+        return None
+
+    entity_registry = er.async_get(hass)
+    for entry in entity_registry.entities.values():
+        if entry.disabled_by is not None or entry.device_id != device_id:
+            continue
+        if entry.entity_id.startswith("light."):
+            return entry.entity_id
+
+    return None
+
+
 def _device_title(device: dr.DeviceEntry | None, mapping: dict[str, str]) -> str:
     """Build a human title for the candidate."""
     if device:
@@ -105,18 +120,28 @@ def _match_role(entry: er.RegistryEntry) -> str | None:
 
 def _discover_optional_entities(entity_registry: er.EntityRegistry, device_id: str) -> dict[str, str]:
     """Discover optional entities on the same device."""
-    light_entity = None
+    result: dict[str, str] = {}
+    light_entity = discover_light_entity_from_registry(entity_registry, device_id)
+    if light_entity:
+        result[CONF_LIGHT_ENTITY] = light_entity
+    return result
+
+
+def discover_light_entity_from_registry(
+    entity_registry: er.EntityRegistry,
+    device_id: str | None,
+) -> str | None:
+    """Discover the main light entity for a device using an entity registry instance."""
+    if not device_id:
+        return None
+
     for entry in entity_registry.entities.values():
         if entry.disabled_by is not None or entry.device_id != device_id:
             continue
         if entry.entity_id.startswith("light."):
-            light_entity = entry.entity_id
-            break
+            return entry.entity_id
 
-    result: dict[str, str] = {}
-    if light_entity:
-        result[CONF_LIGHT_ENTITY] = light_entity
-    return result
+    return None
 
 
 def _matches(entry: er.RegistryEntry, domain: str, entity_suffix: str, name_suffix: str) -> bool:

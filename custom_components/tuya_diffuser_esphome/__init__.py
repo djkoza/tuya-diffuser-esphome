@@ -16,6 +16,12 @@ from .const import (
     ATTR_MINUTES,
     ATTR_STRENGTH,
     CARD_RESOURCE_PATH,
+    CONF_COUNTDOWN_LEFT_ENTITY,
+    CONF_COUNTDOWN_MINUTES_ENTITY,
+    CONF_DEVICE_ID,
+    CONF_LIGHT_ENTITY,
+    CONF_MIST_MODE_ENTITY,
+    CONF_MIST_STRENGTH_ENTITY,
     DATA_ENTITIES,
     DATA_FRONTEND_REGISTERED,
     DATA_SERVICES_REGISTERED,
@@ -24,6 +30,7 @@ from .const import (
     SERVICE_SET_COUNTDOWN_MINUTES,
     SERVICE_SET_MIST_STRENGTH,
 )
+from .discovery import discover_light_entity, resolve_device_id_for_entities
 
 
 def _entity_ids_schema(value: object) -> list[str]:
@@ -61,6 +68,7 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
     hass.data[DOMAIN].setdefault(DATA_ENTITIES, {})
     await async_register_services(hass)
     await async_register_frontend(hass)
+    await _async_backfill_optional_entities(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -121,3 +129,28 @@ def _resolve_entities(hass: HomeAssistant, entity_ids: Iterable[str]) -> list:
     """Resolve entity IDs to registered proxy entities."""
     registry = hass.data[DOMAIN][DATA_ENTITIES]
     return [registry[entity_id] for entity_id in entity_ids if entity_id in registry]
+
+
+async def _async_backfill_optional_entities(hass: HomeAssistant, entry) -> None:
+    """Populate optional entities for older config entries."""
+    if CONF_LIGHT_ENTITY in entry.data:
+        return
+
+    device_id = entry.data.get(CONF_DEVICE_ID) or resolve_device_id_for_entities(
+        hass,
+        [
+            entry.data[CONF_MIST_MODE_ENTITY],
+            entry.data[CONF_MIST_STRENGTH_ENTITY],
+            entry.data[CONF_COUNTDOWN_MINUTES_ENTITY],
+            entry.data[CONF_COUNTDOWN_LEFT_ENTITY],
+        ],
+    )
+    light_entity = discover_light_entity(hass, device_id)
+    if not light_entity:
+        return
+
+    new_data = dict(entry.data)
+    if device_id:
+        new_data[CONF_DEVICE_ID] = device_id
+    new_data[CONF_LIGHT_ENTITY] = light_entity
+    hass.config_entries.async_update_entry(entry, data=new_data)

@@ -15,7 +15,7 @@ from homeassistant.components.humidifier import (
 from homeassistant.const import CONF_NAME, CONF_UNIQUE_ID
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 
@@ -50,6 +50,7 @@ from .const import (
     STRENGTH_LOW,
     STRENGTH_TO_OPTION,
 )
+from .discovery import discover_light_entity, resolve_device_id_for_entities
 
 AVAILABLE_MODES = [MODE_CONTINUOUS, MODE_INTERVAL, MODE_COUNTDOWN]
 UNAVAILABLE_STATES = {STATE_UNKNOWN, STATE_UNAVAILABLE}
@@ -128,6 +129,7 @@ class TuyaDiffuserHumidifier(HumidifierEntity):
         """Handle entity added to Home Assistant."""
         await super().async_added_to_hass()
         self.hass.data[DOMAIN][DATA_ENTITIES][self.entity_id] = self
+        self._resolve_light_entity()
         self.async_on_remove(
             async_track_state_change_event(
                 self.hass,
@@ -157,6 +159,7 @@ class TuyaDiffuserHumidifier(HumidifierEntity):
     @callback
     def _refresh_from_source_states(self) -> None:
         """Refresh state from underlying entities."""
+        self._resolve_light_entity()
         mode_state = self.hass.states.get(self._mist_mode_entity)
         strength_state = self.hass.states.get(self._mist_strength_entity)
         countdown_minutes_state = self.hass.states.get(self._countdown_minutes_entity)
@@ -182,6 +185,37 @@ class TuyaDiffuserHumidifier(HumidifierEntity):
         self._mist_strength = OPTION_TO_STRENGTH.get(strength_state.state, self._mist_strength)
         self._countdown_minutes = _coerce_int(countdown_minutes_state.state, self._countdown_minutes)
         self._countdown_left = _coerce_int(countdown_left_state.state, self._countdown_left)
+
+    @callback
+    def _resolve_light_entity(self) -> None:
+        """Resolve optional light entity for older config entries."""
+        if self._light_entity:
+            return
+
+        if not self._device_id:
+            entity_registry = er.async_get(self.hass)
+            self._device_id = resolve_device_id_for_entities(
+                self.hass,
+                [
+                    self._mist_mode_entity,
+                    self._mist_strength_entity,
+                    self._countdown_minutes_entity,
+                    self._countdown_left_entity,
+                ],
+            )
+            if not self._device_id:
+                for entity_id in (
+                    self._mist_mode_entity,
+                    self._mist_strength_entity,
+                    self._countdown_minutes_entity,
+                    self._countdown_left_entity,
+                ):
+                    if entry := entity_registry.async_get(entity_id):
+                        self._device_id = entry.device_id
+                        if self._device_id:
+                            break
+
+        self._light_entity = discover_light_entity(self.hass, self._device_id)
 
     @property
     def available(self) -> bool:

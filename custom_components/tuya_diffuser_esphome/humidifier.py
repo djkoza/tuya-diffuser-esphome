@@ -249,21 +249,6 @@ class TuyaDiffuserHumidifier(HumidifierEntity):
             },
         }
 
-    @property
-    def device_info(self) -> dict[str, Any]:
-        """Return shared device info for all diffuser entities."""
-        return {
-            "identifiers": {
-                (
-                    DOMAIN,
-                    self._device_id or self._attr_unique_id or self.entity_id,
-                )
-            },
-            "name": self.config_entry.title if self.config_entry is not None else self._attr_name,
-            "manufacturer": "Tuya / ESPHome",
-            "model": "Tuya Diffuser",
-        }
-
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the diffuser on."""
         await self.async_set_mode(self._last_mode)

@@ -7,13 +7,18 @@ Home Assistant custom integration for Tuya diffusers flashed with ESPHome and ex
 - `number.*_countdown_minutes`
 - `sensor.*_countdown_left`
 
-The integration creates one aggregated `humidifier` entity per diffuser and adds two integration services for mist strength and countdown minutes.
+The integration creates one aggregated `humidifier` entity per diffuser, adds native proxy entities for visual dashboard editing, and exposes two integration services for mist strength and countdown minutes.
 
 ## What it does
 
 - appears in `Add Integration`
 - auto-detects compatible ESPHome diffuser devices
 - creates one backend entity instead of several loose helpers
+- creates native proxy entities you can place in Lovelace with the built-in visual editor:
+  - `select.<diffuser>_mode`
+  - `select.<diffuser>_strength`
+  - `number.<diffuser>_timer`
+  - `sensor.<diffuser>_time_left`
 - exposes:
   - `humidifier.turn_on`
   - `humidifier.turn_off`
@@ -61,6 +66,46 @@ type: custom:tuya-diffuser-esphome-card
 entity: humidifier.livingroom_diffuser_mist
 title: Dyfuzor
 light_entity: light.livingroom_diffuser_livingroom_diffuser_light
+```
+
+## Native Lovelace setup
+
+If you prefer fully visual dashboard editing, use the proxy entities directly with standard HA `tile` cards:
+
+```yaml
+- type: tile
+  entity: humidifier.livingroom_diffuser
+  features:
+    - type: toggle
+  features_position: bottom
+
+- type: tile
+  entity: light.livingroom_diffuser_livingroom_diffuser_light
+  features:
+    - type: toggle
+  features_position: bottom
+
+- type: tile
+  entity: select.livingroom_diffuser_mode
+  features:
+    - type: select-options
+  features_position: inline
+
+- type: tile
+  entity: select.livingroom_diffuser_strength
+  features:
+    - type: select-options
+  features_position: inline
+
+- type: tile
+  entity: number.livingroom_diffuser_timer
+  features:
+    - type: numeric-input
+      style: buttons
+  features_position: inline
+
+- type: tile
+  entity: sensor.livingroom_diffuser_time_left
 ```
 
 ## Expected source entities

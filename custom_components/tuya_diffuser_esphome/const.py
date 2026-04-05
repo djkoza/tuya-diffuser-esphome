@@ -1,7 +1,7 @@
 """Constants for the Tuya Diffuser ESPHome integration."""
 
 DOMAIN = "tuya_diffuser_esphome"
-PLATFORMS = ["humidifier"]
+PLATFORMS = ["humidifier", "select", "number", "sensor"]
 
 CARD_RESOURCE_PATH = f"/api/{DOMAIN}/frontend"
 CARD_RESOURCE_URL = f"{CARD_RESOURCE_PATH}/tuya-diffuser-esphome-card.js"

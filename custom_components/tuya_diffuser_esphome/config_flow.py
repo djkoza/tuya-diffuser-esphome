@@ -144,12 +144,8 @@ class TuyaDiffuserEspHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return candidate.data[CONF_DEVICE_ID] in existing_ids
 
 
-class TuyaDiffuserEspHomeOptionsFlow(config_entries.OptionsFlow):
+class TuyaDiffuserEspHomeOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
     """Handle options for the integration."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Manage the integration options."""
@@ -179,36 +175,36 @@ class TuyaDiffuserEspHomeOptionsFlow(config_entries.OptionsFlow):
                 return self.async_create_entry(title="", data={})
 
         defaults = self._defaults()
-        schema: dict[vol.Marker, object] = {
-            vol.Required(CONF_NAME, default=self.config_entry.title): str,
-            vol.Required(CONF_MIST_MODE_ENTITY, default=defaults[CONF_MIST_MODE_ENTITY]): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="select")
-            ),
-            vol.Required(
-                CONF_MIST_STRENGTH_ENTITY,
-                default=defaults[CONF_MIST_STRENGTH_ENTITY],
-            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="select")),
-            vol.Required(
-                CONF_COUNTDOWN_MINUTES_ENTITY,
-                default=defaults[CONF_COUNTDOWN_MINUTES_ENTITY],
-            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="number")),
-            vol.Required(
-                CONF_COUNTDOWN_LEFT_ENTITY,
-                default=defaults[CONF_COUNTDOWN_LEFT_ENTITY],
-            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor")),
-        }
-        if CONF_LIGHT_ENTITY in defaults:
-            schema[vol.Optional(CONF_LIGHT_ENTITY, default=defaults[CONF_LIGHT_ENTITY])] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="light")
-            )
-        else:
-            schema[vol.Optional(CONF_LIGHT_ENTITY)] = selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="light")
-            )
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME): str,
+                vol.Required(CONF_MIST_MODE_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="select")
+                ),
+                vol.Required(CONF_MIST_STRENGTH_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="select")
+                ),
+                vol.Required(CONF_COUNTDOWN_MINUTES_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="number")
+                ),
+                vol.Required(CONF_COUNTDOWN_LEFT_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor")
+                ),
+                vol.Optional(CONF_LIGHT_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="light")
+                ),
+            }
+        )
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(schema),
+            data_schema=self.add_suggested_values_to_schema(
+                schema,
+                {
+                    CONF_NAME: self.config_entry.title,
+                    **defaults,
+                },
+            ),
             errors=errors,
         )
 
